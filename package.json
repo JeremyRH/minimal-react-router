@@ -1,7 +1,7 @@
 {
   "name": "minimal-react-router",
   "version": "0.1.0",
-  "description": "A minimal react router library.",
+  "description": "A lightweight router for React.",
   "module": "out/minimalReactRouter.js",
   "license": "MIT",
   "scripts": {
