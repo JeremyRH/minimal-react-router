@@ -80,7 +80,7 @@ export function getRegExpPath(pathname: string): RegExp {
   });
   // Paths ending in a wildcard or slash don't need an aditional trailing slash.
   const needsFinalSlash = !pathname.endsWith("*") && !pathname.endsWith("/");
-  return RegExp(`^${formattedPath}${needsFinalSlash ? "/" : ""}$`);
+  return RegExp(`^${formattedPath}${needsFinalSlash ? "/" : ""}$`, "i");
 }
 
 export function processRoutes(routes: Routes): ProcessedRoute[] {

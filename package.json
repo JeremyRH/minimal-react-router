@@ -2,7 +2,7 @@
   "name": "minimal-react-router",
   "version": "0.1.0",
   "description": "A lightweight router for React.",
-  "module": "out/minimalReactRouter.js",
+  "main": "out/minimalReactRouter.js",
   "license": "MIT",
   "scripts": {
     "build": "yarn build:types && yarn build:js",
@@ -39,7 +39,6 @@
     "typescript": "^3.4.1"
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
+    "react": ">=16.8.0"
   }
 }

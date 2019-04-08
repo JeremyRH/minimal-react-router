@@ -10,30 +10,28 @@ import {
 } from "./utils/routerUtils";
 import { useStateActions } from "./utils/useStateActions";
 
-type NavigationFunction = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
-  title: string,
-  url?: string | null | undefined
-) => void;
-
-interface Navigation {
-  pushState: NavigationFunction;
-  replaceState: NavigationFunction;
+// window.history object for browsers. Would be a custom object for node.
+interface URLHistory {
+  pushState: typeof History.prototype.pushState;
+  replaceState: typeof History.prototype.replaceState;
 }
 
+// Sets the route for a specific router instance. internalState and historyFn should be bound arguments.
 function setRoute(
   internalState: RouterInternalState,
-  navigationFn: NavigationFunction,
+  historyFn:
+    | typeof History.prototype.pushState
+    | typeof History.prototype.replaceState,
   url: string
 ): Promise<void> {
+  // Only set the route if it has changed.
   if (!new PathURL(url).matches(internalState.url)) {
-    navigationFn(null, "", url);
+    historyFn(null, "", url);
   }
   let anyMatch = false;
   return Array.from(internalState.routeResolvers)
     .reduce((sequence, resolveRoute) => {
-      // Resolve route actions sequentially because they can change state and effect the result of the next action.
+      // Resolve route resolvers sequentially because they can change state and effect the result of the next resolver.
       return sequence
         .then(() => {
           return internalState.routeResolvers.has(resolveRoute)
@@ -77,12 +75,12 @@ function useRoutesFn(
     internalState.routeResolvers.add(resolveRoute);
   }
 
-  // Render initial route when component mounts or routes update.
+  // Render initial route when component mounts or route definitions update.
   useEffect(() => {
     resolveRoute(internalState.url);
   }, [internalState, resolveRoute]);
 
-  // Remove route group if component will unmount.
+  // Remove route group if component will unmount or route definitions update.
   useEffect(
     () => () => {
       internalState.routeResolvers.delete(resolveRoute);
@@ -94,7 +92,7 @@ function useRoutesFn(
 }
 
 export function createRouter(
-  navigation: Navigation,
+  urlHistory: URLHistory,
   initialURL: string
 ): Router {
   const internalState: RouterInternalState = {
@@ -105,12 +103,12 @@ export function createRouter(
   const push = setRoute.bind(
     null,
     internalState,
-    navigation.pushState.bind(navigation)
+    urlHistory.pushState.bind(urlHistory)
   );
   const replace = setRoute.bind(
     null,
     internalState,
-    navigation.replaceState.bind(navigation)
+    urlHistory.replaceState.bind(urlHistory)
   );
   const useRoutes = useRoutesFn.bind(null, internalState, replace);
   return {

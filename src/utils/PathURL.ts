@@ -16,11 +16,13 @@ export class PathURL {
     return this.pathname.endsWith("/") ? this.pathname : `${this.pathname}/`;
   }
 
+  // Not case sensitive and doesn't care about final slash.
   public matches(path: string | PathURL): boolean {
     const pathObj = typeof path === "string" ? new PathURL(path) : path;
     return (
       this.ensureFinalSlash() === pathObj.ensureFinalSlash() &&
-      this.searchParams.toString() === pathObj.searchParams.toString() &&
+      this.searchParams.toString().toLowerCase() ===
+        pathObj.searchParams.toString().toLowerCase() &&
       this.hash === pathObj.hash
     );
   }

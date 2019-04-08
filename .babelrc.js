@@ -7,8 +7,8 @@ module.exports = ({ env }) => {
       isTest
         ? "babel-plugin-dynamic-import-node"
         : "@babel/plugin-syntax-dynamic-import",
-      isTest && "@babel/plugin-transform-modules-commonjs"
-    ].filter(Boolean),
+      "@babel/plugin-transform-modules-commonjs"
+    ],
     ignore: isTest
       ? undefined
       : ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js"]
