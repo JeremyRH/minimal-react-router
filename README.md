@@ -11,11 +11,14 @@ Uses [React hooks](https://reactjs.org/docs/hooks-reference.html) and requires a
 ## Example
 
 ```js
+import { createRouter } from "minimal-react-router";
+
 const router = createRouter(window.history, location.href);
 const routes = {
   "/one": () => ComponentOne,
   "/two": () => ComponentTwo
 };
+
 function App() {
   const { result: Component } = router.useRoutes(routes);
   return <Component />;
