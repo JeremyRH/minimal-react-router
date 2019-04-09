@@ -8,6 +8,20 @@ Uses [React hooks](https://reactjs.org/docs/hooks-reference.html) and requires a
 
 `npm install minimal-react-router`
 
+## Example
+
+```js
+const router = createRouter(window.history, location.href);
+const routes = {
+  "/one": () => ComponentOne,
+  "/two": () => ComponentTwo
+};
+function App() {
+  const { result: Component } = router.useRoutes(routes);
+  return <Component />;
+}
+```
+
 ## API
 
 ### createRouter
@@ -36,20 +50,6 @@ A custom React hook that takes a `routes` object and returns a result of the mat
 
 * `@param routes` An object describing the routes.
 * `@returns { parameters, path, result }`
-
-Example:
-
-```js
-const router = createRouter(window.history, location.href);
-const routes = {
-  "/one": () => ComponentOne,
-  "/two": () => ComponentTwo
-};
-function App() {
-  const { result: Component } = router.useRoutes(routes);
-  return <Component />;
-}
-```
 
 ### router.push
 

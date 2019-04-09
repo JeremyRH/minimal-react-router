@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { PathURL } from "./utils/PathURL";
+import { resolveRouteAction } from "./utils/resolveRouteAction";
 import {
   processRoutes,
   ResolvedRoute,
-  resolveRouteAction,
   Router,
   RouterInternalState,
   Routes
@@ -95,6 +95,16 @@ export function createRouter(
   urlHistory: URLHistory,
   initialURL: string
 ): Router {
+  if (
+    !urlHistory ||
+    typeof urlHistory.pushState !== "function" ||
+    typeof urlHistory.replaceState !== "function"
+  ) {
+    throw new TypeError(`Failed to create router: invalid History object`);
+  }
+  if (typeof initialURL !== "string") {
+    throw new TypeError(`Failed to create router: invalid inital URL`);
+  }
   const internalState: RouterInternalState = {
     redirectStack: [],
     routeResolvers: new Set(),
