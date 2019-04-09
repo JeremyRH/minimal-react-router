@@ -28,6 +28,9 @@
     "eslint-plugin-react-hooks"
   ],
   "rules": {
+    "@typescript-eslint/explicit-function-return-type": [
+      "error", { "allowExpressions": true }
+    ],
     "import/extensions": ["error", {
       "ts": "never",
       "tsx": "never",
@@ -58,6 +61,9 @@
       "node": {
         "extensions": [".ts", ".tsx", ".js"]
       }
+    },
+    "react": {
+      "version": "detect"
     }
   }
 }
