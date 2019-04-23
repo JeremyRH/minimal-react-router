@@ -20,7 +20,9 @@ const routes = {
 };
 
 function App() {
-  const { result: Component } = router.useRoutes(routes);
+  // Routes are resolved async so the inital value is undefined.
+  // Set a default value for the placeholder.
+  const [Component = Spinner] = router.useRoutes(routes);
   return <Component />;
 }
 ```
@@ -42,17 +44,19 @@ Creates a router instance.
 ### router.useRoutes
 
 ```ts
-{
-  parameters: string[],
-  path: PathURL {},
-  result: any
-} = router.useRoutes(routes)
+[
+  result,
+  {
+    parameters: string[],
+    path: PathURL {}
+  }
+] = router.useRoutes(routes)
 ```
 
 A custom React hook that takes a `routes` object and returns a result of the matching route.
 
 * `@param routes` An object describing the routes.
-* `@returns { parameters, path, result }`
+* `@returns [result, { parameters, path }]`
 
 ### router.push
 

@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { PathURL } from "./utils/PathURL";
-import { resolveRouteAction } from "./utils/resolveRouteAction";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  processRoutes,
-  ResolvedRoute,
   Router,
   RouterInternalState,
-  Routes
-} from "./utils/routerUtils";
+  RouterMethod,
+  Routes,
+  UseRoutesResult
+} from "./types";
+import { PathURL } from "./utils/PathURL";
+import { resolveRouteAction } from "./utils/resolveRouteAction";
+import { processRoutes, resolveLatest } from "./utils/routerUtils";
 import { useStateActions } from "./utils/useStateActions";
 
-// window.history object for browsers. Would be a custom object for node.
+// window.history object for browsers. Would be a custom object for SSR.
 interface URLHistory {
   pushState: typeof History.prototype.pushState;
   replaceState: typeof History.prototype.replaceState;
 }
 
-// Sets the route for a specific router instance. internalState and historyFn should be bound arguments.
-function setRoute(
+// Sets the route for a router instance.
+const [setRoute] = resolveLatest(async function setRoute(
   internalState: RouterInternalState,
   historyFn:
     | typeof History.prototype.pushState
@@ -28,67 +29,57 @@ function setRoute(
   if (!new PathURL(url).matches(internalState.url)) {
     historyFn(null, "", url);
   }
+  const { routeResolvers } = internalState;
   let anyMatch = false;
-  return Array.from(internalState.routeResolvers)
-    .reduce((sequence, resolveRoute) => {
-      // Resolve route resolvers sequentially because they can change state and effect the result of the next resolver.
-      return sequence
-        .then(() => {
-          return internalState.routeResolvers.has(resolveRoute)
-            ? resolveRoute(url)
-            : false;
-        })
-        .then(hasMatch => {
-          anyMatch = anyMatch || hasMatch;
-        });
-    }, Promise.resolve())
-    .then(() => {
-      if (!anyMatch) {
-        throw new Error(`Cound not find a matching route for: "${url}"`);
+  for (let resolverKey of Object.getOwnPropertySymbols(routeResolvers)) {
+    const resolveRoute = routeResolvers[(resolverKey as unknown) as string];
+    if (resolveRoute) {
+      const status = await resolveRoute(url);
+      if (status === undefined) {
+        return;
       }
-    });
-}
+      anyMatch = anyMatch || status;
+    }
+  }
+  if (!anyMatch) {
+    throw new Error(`Cound not find a matching route for: "${url}"`);
+  }
+});
 
 // Sets a route group and returns a result from the routes.
 function useRoutesFn(
   internalState: RouterInternalState,
-  routerReplace: Router["replace"],
+  routerReplace: RouterMethod,
   routes: Routes
-): ResolvedRoute {
+): UseRoutesResult {
+  const { initialState, routeResolvers } = internalState;
   const processedRoutes = useMemo(() => processRoutes(routes), [routes]);
-  const initialState: ResolvedRoute = {
-    parameters: [],
-    path: new PathURL(internalState.url),
-    result: null
-  };
   const [resolvedRoute, resolveRouteFn] = useStateActions(
     initialState,
     resolveRouteAction
   );
   const resolveRoute = useCallback(
-    resolveRouteFn.bind(null, internalState, routerReplace, processedRoutes),
-    [resolveRouteFn, internalState, routerReplace, processedRoutes]
+    resolveRouteFn.bind(null, internalState, processedRoutes, routerReplace),
+    [resolveRouteFn, internalState, processedRoutes, routerReplace]
   );
-
-  // Adding resolver to the internal state synchronously because they are resolved in order.
-  if (!internalState.routeResolvers.has(resolveRoute)) {
-    internalState.routeResolvers.add(resolveRoute);
+  const resolverKey = useRef(Symbol()).current;
+  // Add route resolver placeholder to internalState to ensure iteration order of object keys when resolving routes.
+  if (!routeResolvers.hasOwnProperty(resolverKey)) {
+    routeResolvers[(resolverKey as unknown) as string] = null;
   }
-
-  // Render initial route when component mounts or route definitions update.
+  useEffect(() => {
+    routeResolvers[(resolverKey as unknown) as string] = resolveRoute;
+    return () => {
+      delete routeResolvers[(resolverKey as unknown) as string];
+    };
+  }, [routeResolvers, resolveRoute, resolverKey]);
+  // Resolve initial route when component mounts.
   useEffect(() => {
     resolveRoute(internalState.url);
-  }, [internalState, resolveRoute]);
-
-  // Remove route group if component will unmount or route definitions update.
-  useEffect(
-    () => () => {
-      internalState.routeResolvers.delete(resolveRoute);
-    },
-    [internalState, resolveRoute]
-  );
-
-  return resolvedRoute;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const { parameters, path, result } = resolvedRoute;
+  return [result, { parameters, path }];
 }
 
 export function createRouter(
@@ -106,20 +97,19 @@ export function createRouter(
     throw new TypeError(`Failed to create router: invalid inital URL`);
   }
   const internalState: RouterInternalState = {
+    initialState: {
+      parameters: [],
+      path: new PathURL(initialURL),
+      result: undefined
+    },
     redirectStack: [],
-    routeResolvers: new Set(),
+    routeResolvers: {},
     url: initialURL
   };
-  const push = setRoute.bind(
-    null,
-    internalState,
-    urlHistory.pushState.bind(urlHistory)
-  );
-  const replace = setRoute.bind(
-    null,
-    internalState,
-    urlHistory.replaceState.bind(urlHistory)
-  );
+  const pushState = urlHistory.pushState.bind(urlHistory);
+  const replaceState = urlHistory.replaceState.bind(urlHistory);
+  const push = setRoute.bind(null, internalState, pushState);
+  const replace = setRoute.bind(null, internalState, replaceState);
   const useRoutes = useRoutesFn.bind(null, internalState, replace);
   return {
     push,

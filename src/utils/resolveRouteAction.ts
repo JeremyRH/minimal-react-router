@@ -1,19 +1,18 @@
-import { PathURL } from "./PathURL";
 import {
-  arraysMatch,
-  getCaptureGroups,
   ProcessedRoute,
   ResolvedRoute,
   RouterInternalState,
   RouterMethod
-} from "./routerUtils";
+} from "../types";
+import { PathURL } from "./PathURL";
+import { arraysMatch, getCaptureGroups } from "./routerUtils";
 
-export function resolveRouteAction(
+export async function resolveRouteAction(
   setState: (newState: ResolvedRoute) => void,
   getState: () => ResolvedRoute,
   internalState: RouterInternalState,
-  routerReplace: RouterMethod,
   processedRoutes: ProcessedRoute[],
+  routerReplace: RouterMethod,
   url: string
 ): Promise<boolean> {
   const pathURL = new PathURL(url);
@@ -21,37 +20,37 @@ export function resolveRouteAction(
     regExpPath.test(pathURL.ensureFinalSlash())
   );
   if (!matchedRoute) {
-    return Promise.resolve(false);
+    return false;
   }
-  let redirectCalled = false;
+  let redirectPromise: Promise<void> | null = null;
   const redirect = (redirectURL: string): Promise<void> => {
-    redirectCalled = true;
     internalState.redirectStack.push(url);
     if (internalState.redirectStack.length >= 10) {
       throw new Error(
         `Exceeded redirect limit.\n${internalState.redirectStack.join(" -> ")}`
       );
     }
-    return routerReplace(redirectURL);
+    redirectPromise = routerReplace(redirectURL);
+    return redirectPromise;
   };
   const parameters = getCaptureGroups(matchedRoute.regExpPath, url);
-  return Promise.resolve(
-    matchedRoute.resolve({ parameters, path: pathURL, redirect })
-  ).then(result => {
-    if (redirectCalled) {
-      // Return a promise that never resolves to effectively cancel it.
-      return new Promise(() => {});
-    }
-    const prevState = getState();
-    const isSameState =
-      Object.is(result, prevState.result) &&
-      pathURL.matches(prevState.path) &&
-      arraysMatch(parameters, prevState.parameters);
-    if (!isSameState) {
-      setState({ parameters, path: pathURL, result });
-    }
-    internalState.url = url;
-    internalState.redirectStack.length = 0;
-    return true;
+  const result = await matchedRoute.resolve({
+    parameters,
+    path: pathURL,
+    redirect
   });
+  if (redirectPromise !== null) {
+    return redirectPromise;
+  }
+  const prevState = getState();
+  const isSameState =
+    Object.is(result, prevState.result) &&
+    pathURL.matches(prevState.path) &&
+    arraysMatch(parameters, prevState.parameters);
+  if (!isSameState) {
+    setState({ parameters, path: pathURL, result });
+  }
+  internalState.url = url;
+  internalState.redirectStack.length = 0;
+  return true;
 }

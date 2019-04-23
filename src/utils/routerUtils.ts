@@ -1,44 +1,6 @@
+import { ProcessedRoute, Routes } from "../types";
 import { PathURL } from "./PathURL";
 
-export type RouterMethod = (url: string) => Promise<void>;
-
-export interface MatchedRoute {
-  parameters: string[];
-  path: PathURL;
-  redirect: RouterMethod;
-}
-
-export interface Routes {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [route: string]: (route: MatchedRoute) => any;
-}
-
-export interface ProcessedRoute {
-  path: string;
-  regExpPath: RegExp;
-  resolve: Routes["route"];
-}
-
-export interface ResolvedRoute {
-  parameters: string[];
-  path: PathURL;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any;
-}
-
-export interface Router {
-  push: RouterMethod;
-  replace: RouterMethod;
-  useRoutes: (routes: Routes) => ResolvedRoute;
-}
-
-export interface RouterInternalState {
-  redirectStack: string[];
-  routeResolvers: Set<(url: string) => Promise<boolean>>;
-  url: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function arraysMatch(firstArr: any[], ...arrays: any[][]): boolean {
   return (
     arrays.length > 0 &&
@@ -101,4 +63,22 @@ export function processRoutes(routes: Routes): ProcessedRoute[] {
       resolve
     };
   });
+}
+
+export function resolveLatest<T extends any[], U>(
+  ...asyncFns: ((...args: T) => Promise<U>)[]
+): ((...args: T) => Promise<U>)[] {
+  let token: symbol;
+  return asyncFns.map(
+    asyncFn =>
+      function(...args) {
+        const storedToken = (token = Symbol());
+        return asyncFn(...args).then(value => {
+          if (storedToken === token) {
+            return value;
+          }
+          return new Promise(() => {});
+        });
+      }
+  );
 }

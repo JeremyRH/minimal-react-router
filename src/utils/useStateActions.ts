@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import { useMemo, useReducer, useRef } from "react";
 
 type SetState<T> = (newState: T) => void;
 type GetState<T> = () => T;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction<T, U extends any[], V> = (
   setState: SetState<T>,
   getState: GetState<T>,
@@ -13,7 +12,6 @@ function reducer<T>(state: T, newState: T): T {
   return newState;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useStateActions<T, U extends any[], V>(
   initialState: T,
   ...actions: ActionFunction<T, U, V>[]
@@ -22,19 +20,18 @@ export function useStateActions<T, U extends any[], V>(
     reducer,
     initialState
   );
-  const stateRef = useRef(state);
-  const getState = useCallback(() => stateRef.current, [stateRef]);
-  const setState = useCallback(
-    (newState: T) => {
-      stateRef.current = newState;
-      return dispatch(newState);
-    },
-    [stateRef]
-  );
+  const ref = useRef({
+    state,
+    getState: () => ref.state,
+    setState(newState: T) {
+      ref.state = newState;
+      dispatch(newState);
+    }
+  }).current;
   const boundActions = useMemo(
-    () => actions.map(action => action.bind(null, setState, getState)),
+    () => actions.map(action => action.bind(null, ref.setState, ref.getState)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setState, getState, ...actions]
+    [...actions]
   );
   return [state, ...boundActions];
 }
