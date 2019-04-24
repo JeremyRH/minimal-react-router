@@ -32,6 +32,7 @@ const [setRoute] = resolveLatest(async function setRoute(
   const { routeResolvers } = internalState;
   let anyMatch = false;
   for (let resolverKey of Object.getOwnPropertySymbols(routeResolvers)) {
+    internalState.currentRouteToken = resolverKey;
     const resolveRoute = routeResolvers[(resolverKey as unknown) as string];
     if (resolveRoute) {
       const status = await resolveRoute(url);
@@ -75,6 +76,7 @@ function useRoutesFn(
   }, [routeResolvers, resolveRoute, resolverKey]);
   // Resolve initial route when component mounts.
   useEffect(() => {
+    internalState.currentRouteToken = resolverKey;
     resolveRoute(internalState.url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -84,7 +86,8 @@ function useRoutesFn(
 
 export function createRouter(
   urlHistory: URLHistory,
-  initialURL: string
+  initialURL: string,
+  defaultResult?: any
 ): Router {
   if (
     !urlHistory ||
@@ -97,10 +100,11 @@ export function createRouter(
     throw new TypeError(`Failed to create router: invalid inital URL`);
   }
   const internalState: RouterInternalState = {
+    currentRouteToken: Symbol(),
     initialState: {
       parameters: [],
       path: new PathURL(initialURL),
-      result: undefined
+      result: defaultResult
     },
     redirectStack: [],
     routeResolvers: {},

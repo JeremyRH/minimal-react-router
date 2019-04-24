@@ -15,6 +15,7 @@ export async function resolveRouteAction(
   routerReplace: RouterMethod,
   url: string
 ): Promise<boolean> {
+  const { currentRouteToken, redirectStack, routeResolvers } = internalState;
   const pathURL = new PathURL(url);
   const matchedRoute = processedRoutes.find(({ regExpPath }) =>
     regExpPath.test(pathURL.ensureFinalSlash())
@@ -24,10 +25,10 @@ export async function resolveRouteAction(
   }
   let redirectPromise: Promise<void> | null = null;
   const redirect = (redirectURL: string): Promise<void> => {
-    internalState.redirectStack.push(url);
-    if (internalState.redirectStack.length >= 10) {
+    redirectStack.push(url);
+    if (redirectStack.length >= 10) {
       throw new Error(
-        `Exceeded redirect limit.\n${internalState.redirectStack.join(" -> ")}`
+        `Exceeded redirect limit.\n${redirectStack.join(" -> ")}`
       );
     }
     redirectPromise = routerReplace(redirectURL);
@@ -42,6 +43,10 @@ export async function resolveRouteAction(
   if (redirectPromise !== null) {
     return redirectPromise;
   }
+  // Component will unmount or has unmounted.
+  if (!routeResolvers[(currentRouteToken as unknown) as string]) {
+    return false;
+  }
   const prevState = getState();
   const isSameState =
     Object.is(result, prevState.result) &&
@@ -51,6 +56,6 @@ export async function resolveRouteAction(
     setState({ parameters, path: pathURL, result });
   }
   internalState.url = url;
-  internalState.redirectStack.length = 0;
+  redirectStack.length = 0;
   return true;
 }

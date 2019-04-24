@@ -1,6 +1,8 @@
+/* eslint-disable no-console */
 import React from "react";
+import ReactDOM from "react-dom";
 import { createRouter } from "./minimalReactRouter";
-import { cleanup, render, waitForElement } from "react-testing-library";
+import { cleanup, render, waitForElement, wait } from "react-testing-library";
 
 afterEach(cleanup);
 
@@ -50,4 +52,24 @@ test("can return result from multiple routes", async () => {
       </div>
     </DocumentFragment>
   `);
+});
+
+test("does not call setState on unmounted route", async () => {
+  const router = createRouter(window.history, "/foo");
+  const routes = { "/foo": () => <div>foo</div> };
+  function Foo() {
+    const [component = null] = router.useRoutes(routes);
+    return component;
+  }
+  const { container } = render(<Foo />);
+  console.error = jest.fn(console.error);
+  ReactDOM.unmountComponentAtNode(container);
+  await wait(() => {
+    expect(
+      console.error.mock.calls.find(([message]) =>
+        message.includes("unmounted component")
+      )
+    ).toBe(undefined);
+    console.error.mockRestore();
+  });
 });

@@ -32,6 +32,7 @@ export interface Routes {
 }
 
 export interface RouterInternalState {
+  currentRouteToken: symbol;
   initialState: ResolvedRoute;
   redirectStack: string[];
   routeResolvers: Record<string, ((url: string) => Promise<boolean>) | null> &
