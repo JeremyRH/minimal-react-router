@@ -55,7 +55,6 @@ export async function resolveRouteAction(
   if (!isSameState) {
     setState({ parameters, path: pathURL, result });
   }
-  internalState.url = url;
   redirectStack.length = 0;
   return true;
 }

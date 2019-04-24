@@ -9,7 +9,8 @@
       "args": [
         "--config=jest.config.js",
         "--runInBand",
-        "--no-cache"
+        "--no-cache",
+        "--testNamePattern=."
       ]
     }
   ]

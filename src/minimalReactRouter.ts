@@ -27,6 +27,7 @@ const [setRoute] = resolveLatest(async function setRoute(
 ): Promise<void> {
   // Only set the route if it has changed.
   if (!new PathURL(url).matches(internalState.url)) {
+    internalState.url = url;
     historyFn(null, "", url);
   }
   const { routeResolvers } = internalState;
@@ -36,10 +37,8 @@ const [setRoute] = resolveLatest(async function setRoute(
     const resolveRoute = routeResolvers[(resolverKey as unknown) as string];
     if (resolveRoute) {
       const status = await resolveRoute(url);
-      if (status === undefined) {
-        return;
-      }
-      anyMatch = anyMatch || status;
+      if (status === undefined) return;
+      if (status === true) anyMatch = true;
     }
   }
   if (!anyMatch) {
